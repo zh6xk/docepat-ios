@@ -1,0 +1,46 @@
+name: Build iOS IPA (React Native Expo)
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build-ios:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Setup Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18.x
+          cache: npm
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Prebuild iOS Project
+        run: npx expo prebuild --platform ios --clean
+
+      - name: Install CocoaPods
+        run: cd ios && pod install
+
+      - name: Build unsigned .app
+        run: |
+          cd ios
+          xcodebuild -workspace DOCEPAT.xcworkspace -scheme DOCEPAT -configuration Release -sdk iphonesimulator -derivedDataPath build CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO
+
+      - name: Package to .ipa
+        run: |
+          mkdir -p Payload
+          mv ios/build/Build/Products/Release-iphonesimulator/DOCEPAT.app Payload/
+          zip -r DOCEPAT.ipa Payload
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: DOCEPAT-iOS-Simulator
+          path: DOCEPAT.ipa
